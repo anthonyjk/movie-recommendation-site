@@ -1,10 +1,19 @@
+# Site Plan:
+# User logs in -> use Model 1 from jupyter to pull movies and ask "seen or not seen", if seen, get rating (add to new ratings table)
+# Page button at top -> see recommendations -> uses model to show recommendations based on data
+# 0 - 5 ratings -> use model 1 (most popular movies, baseline)
+# 6 - 10 ratings -> use model 2?
+# 10+ ratings -> model 3 (account for user ratings)
+# ALSO maybe: "Similar users liked..."
+#		Use k-means to get movie recommendations here, based on other accounts
+
 import sqlite3
 import os
 import hashlib # base module
 import json # base module
 import base64 # base module
 import hmac # base module
-from flask import Flask, request
+from flask import Flask, request, render_template, redirect, url_for, flash
 
 # Helper Functions
 def valid_username(username):
@@ -75,6 +84,7 @@ def base64UrlDecode(data):
 
 # Flask App
 app = Flask(__name__)
+app.secret_key = "sekret"
 db_name = "project1.db"
 sql_file = "project1.sql"
 db_flag = False
@@ -106,7 +116,10 @@ def index():
 	result = cursor.fetchall()
 	conn.close()
 
-	return result
+	return render_template('index.html', name="User")
+@app.route('/movie_page', methods=(['GET']))
+def movie_page():
+	return render_template("movie.html")
 
 @app.route('/clear', methods=(['GET']))
 def clear():
@@ -154,7 +167,12 @@ def create_user():
 	response = {f'status': status,
 				'pass_hash': pass_hash}
 
-	return json.dumps(response), 200, {'Content-Type': 'application/json'}
+	#return json.dumps(response), 200, {'Content-Type': 'application/json'}
+	if status == 1:
+		flash("Account created successfully! Please log in.")
+	else:
+		flash("Account creation failed, please try again.")
+	return redirect(url_for('index'))
 
 # 5.3
 @app.route('/login', methods=(['POST'])) # REVIEW
@@ -210,7 +228,13 @@ def login():
 	response = {f'status': status,
 				'jwt': jwt}
 
-	return json.dumps(response), 200, {'Content-Type': 'application/json'}
+	if status == 1:
+		flash(data['username'])
+		return redirect(url_for('movie_page'))
+	else:
+		flash("Login failed, username or password incorrect.")
+		return redirect(url_for('index'))
+	#return json.dumps(response), 200, {'Content-Type': 'application/json'}
 
 # 5.4
 @app.route('/update', methods=(['POST'])) # REVIEW

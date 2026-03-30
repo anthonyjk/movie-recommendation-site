@@ -1,0 +1,56 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flask App</title>
+</head>
+<body>
+    <h1>Hello, {{ name }}!</h1>
+
+    <h4> LOGIN </h4>
+    <form action="/login" method="POST">
+      <!-- Username Field -->
+      <label for="username">Username:</label><br>
+      <input type="text" id="username" name="username" placeholder="Enter Username"><br><br>
+
+      <!-- Password Field -->
+      <label for="password">Password:</label><br>
+      <input type="password" id="password" name="password" placeholder="Enter Password"><br><br>
+
+      <!-- Submit Button -->
+      <input type="submit" value="Login">
+    </form>
+
+    <br>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h4> CREATE ACCOUNT </h4>
+    <form action="/create_user" method="POST">
+      <label>First Name:</label>
+      <input type="text" name="first_name" required>
+
+      <label>Last Name:</label>
+      <input type="text" name="last_name" required>
+
+      <label>Username:</label>
+      <input type="text" name="username" required>
+
+      <label>Email:</label>
+      <input type="text" name="email_address" required>
+      
+      <label>Password:</label>
+      <input type="password" name="password" required>
+
+      <label>salt:</label>
+      <input type="text" name="salt" required>
+      
+      <button type="submit">Create Account</button>
+    </form>
+</body>
+</html>
