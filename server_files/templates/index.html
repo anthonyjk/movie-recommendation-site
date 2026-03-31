@@ -32,23 +32,14 @@
 
     <h4> CREATE ACCOUNT </h4>
     <form action="/create_user" method="POST">
-      <label>First Name:</label>
-      <input type="text" name="first_name" required>
-
-      <label>Last Name:</label>
-      <input type="text" name="last_name" required>
-
       <label>Username:</label>
       <input type="text" name="username" required>
 
-      <label>Email:</label>
-      <input type="text" name="email_address" required>
+      <label>Email (Optional):</label>
+      <input type="text" name="email_address">
       
       <label>Password:</label>
       <input type="password" name="password" required>
-
-      <label>salt:</label>
-      <input type="text" name="salt" required>
       
       <button type="submit">Create Account</button>
     </form>

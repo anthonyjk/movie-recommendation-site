@@ -3,6 +3,7 @@ __pycache__/
 ml-32m/
 *.py[codz]
 *$py.class
+*.db
 
 # C extensions
 *.so

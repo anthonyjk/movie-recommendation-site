@@ -13,11 +13,14 @@ import hashlib # base module
 import json # base module
 import base64 # base module
 import hmac # base module
+import re
+import random
+import string
 from flask import Flask, request, render_template, redirect, url_for, flash
 
 # Helper Functions
 def valid_username(username):
-	conn = sqlite3.connect("project1.db")
+	conn = sqlite3.connect("site.db")
 	cursor = conn.cursor()
 
 	cursor.execute("SELECT username FROM user_db")
@@ -34,7 +37,9 @@ def valid_username(username):
 		return True
 
 def valid_email(email):
-	conn = sqlite3.connect("project1.db")
+	return True # dont want to deal with this rn...
+
+	conn = sqlite3.connect("site.db")
 	cursor = conn.cursor()
 
 	cursor.execute("SELECT email_address FROM user_db")
@@ -42,27 +47,25 @@ def valid_email(email):
 	all_emails = [r[0] for r in rows] # getting all usernames in db
 
 	if email in all_emails:
-		conn.commit()
 		conn.close()
 		return False
 	else:
-		conn.commit()
 		conn.close()
 		return True
 
 def valid_password(password, username, first, last, old_passes, salt=None):
-	if len(password) < 8: # Length validation
-		return False
-	if any(char.islower() for char in password) != any(char.isupper() for char in password) or not any(char.isalnum() for char in password) : # Upper & Lowercase Validation
-		return False
-	if not any(char.isnumeric() for char in password): # Check for numbers
-		return False
-	if username.lower() in password.lower():
-		return False
-	if first.lower() in password.lower():
-		return False
-	if last.lower() in password.lower():
-		return False
+	#if len(password) < 8: # Length validation
+	#	return False
+	#if any(char.islower() for char in password) != any(char.isupper() for char in password) or not any(char.isalnum() for char in password) : # Upper & Lowercase Validation
+	#	return False
+	#if not any(char.isnumeric() for char in password): # Check for numbers
+	#	return False
+	#if username.lower() in password.lower():
+	#	return False
+	#if first.lower() in password.lower():
+	#	return False
+	#if last.lower() in password.lower():
+	#	return False
 
 	if salt: # prevent reusing passwords
 		to_hash = password + salt
@@ -85,8 +88,8 @@ def base64UrlDecode(data):
 # Flask App
 app = Flask(__name__)
 app.secret_key = "sekret"
-db_name = "project1.db"
-sql_file = "project1.sql"
+db_name = "site.db"
+sql_file = "site.sql"
 db_flag = False
 
 def create_db():
@@ -134,12 +137,22 @@ def create_user():
 	data = request.form.to_dict()
 	status = 1
 
+	data['first_name'] = ""
+	data['last_name'] = ""
+	if 'email_address' not in data:
+		data['email_adress'] = ""
+
 	if valid_username(data['username']) == False:
 		status = 2
-	elif valid_email(data['email_address']) == False:
+	elif 'email_address' in data and valid_email(data['email_address']) == False:
 		status = 3
 	elif valid_password(data['password'], data['username'], data['first_name'], data['last_name'], []) == False: # dont have to deal w/ old passes cuz its a new account
 		status = 4
+
+	print(status)
+	# random salt
+	characters = string.ascii_letters + string.digits 
+	data['salt'] = ''.join(random.choices(characters, k=10))
 
 	if status == 1:
 		# Password hashing
@@ -147,7 +160,7 @@ def create_user():
 		pass_hash = hashlib.sha256(to_hash.encode()).hexdigest()
 
 		# Database insertion
-		conn = sqlite3.connect("project1.db")
+		conn = sqlite3.connect("site.db")
 		cursor = conn.cursor()
 
 		try:
@@ -181,10 +194,14 @@ def login():
 	status = 2
 	jwt = "NULL"
 
-	conn = sqlite3.connect("project1.db")
+	conn = sqlite3.connect("site.db")
 	cursor = conn.cursor()
 
 	try:
+		#cursor.execute("SELECT * FROM user_db")
+		#row = cursor.fetchall()
+		#print(row)
+
 		cursor.execute("SELECT * FROM user_db WHERE username = (?)",
 			(data['username'],))
 		row = cursor.fetchone()
@@ -286,7 +303,7 @@ def update():
 				return {"status": 2}
 
 			# now check if in db
-			conn = sqlite3.connect("project1.db")
+			conn = sqlite3.connect("site.db")
 			cursor = conn.cursor()
 
 			try:
@@ -310,7 +327,7 @@ def update():
 			new_user = True
 
 		if 'password' in data:
-			conn = sqlite3.connect("project1.db")
+			conn = sqlite3.connect("site.db")
 			cursor = conn.cursor()
 
 			first = None
@@ -371,7 +388,7 @@ def update():
 	# since it is possible their username thing is valid, but their password isn't, so we don't want to update username unless both user and pass are valid
 	if new_user == True:
 		# time to update it
-		conn = sqlite3.connect("project1.db")
+		conn = sqlite3.connect("site.db")
 		cursor = conn.cursor()
 
 		try:
@@ -392,7 +409,7 @@ def update():
 			return {"status": 2}
 
 	if new_pass == True:
-		conn = sqlite3.connect("project1.db")
+		conn = sqlite3.connect("site.db")
 		cursor = conn.cursor()
 
 		try:
@@ -457,7 +474,7 @@ def view():
 	# if here that means jwt is valid!
 	return_data = {}
 
-	conn = sqlite3.connect("project1.db")
+	conn = sqlite3.connect("site.db")
 	cursor = conn.cursor()
 
 	try:
@@ -483,3 +500,4 @@ def view():
 
 if __name__ == "__main__":
     app.run(debug=True)
+    movie_csv()
