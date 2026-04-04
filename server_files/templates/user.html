@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User #{{ target_user_id }}</title>
+</head>
+<body>
+
+    <h1>Rating History for User #{{ target_user_id }}</h1>
+    <p><a href="/recommend">← Back to my recommendations</a></p>
+    
+    <hr>
+
+    <table border="1" cellpadding="8" cellspacing="0">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th>Movie Title</th>
+                <th>Year</th>
+                <th>Rating Given</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for review in history %}
+            <tr>
+                <td>{{ review.title }}</td>
+                <td>{{ review.year }}</td>
+                <td align="center">
+                    <b>{{ review.rating | round(1) }}</b> / 5.0
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

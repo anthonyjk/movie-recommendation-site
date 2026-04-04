@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Recommendations</title>
+</head>
+<body>
+
+    <h1>Recommendations for {{ username }}</h1>
+    <hr>
+
+    <h2>Because you like <u>{{ favorite_genre }}</u>, you might be interested in...</h2>
+    <ul>
+        {% for movie in genre_recommendations %}
+        <li>
+            <b>{{ movie.title }}</b> ({{ movie.release_year }}) - <i>Average Rating: {{ movie.avg_rating | round(1) }}★</i>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <br>
+
+    <h2>Because you enjoyed <u>{{ seed_movie_title }}</u>, you might like...</h2>
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Movie Title</th>
+                <th>Release Year</th>
+                <th>Similarity Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movie in item_similar_recommendations %}
+            <tr>
+                <td>{{ movie.title }}</td>
+                <td>{{ movie.release_year }}</td>
+                <td>{{ (movie.score * 100)|int }}% Match</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+
+    <h2>Users who are similar to you</h2>
+    <ul>
+      {% for user in similar_users %}
+      <li>
+          <strong>
+              <a href="{{ url_for('view_user', user_id=user.id) }}">User #{{ user.id }}</a>
+          </strong> 
+          — {{ (user.similarity * 100)|int }}% Taste Match
+      </li>
+      {% endfor %}
+  </ul>
+
+    <p><a href="/">← Return</a></p>
+
+</body>
+</html>
