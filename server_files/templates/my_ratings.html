@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ username }}'s Ratings</title>
+</head>
+<body>
+
+    <h1>Ratings for {{ username }}</h1>
+    <p><a href="{{ url_for('movie_page') }}">← Back to movies</a></p>
+    <p><a href="{{ url_for('recommend') }}">See recommendations</a></p>
+
+    <hr>
+
+    {% if history %}
+    <table border="1" cellpadding="8" cellspacing="0">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th>Movie Title</th>
+                <th>Year</th>
+                <th>Rating Given</th>
+                <th>Rated At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for review in history %}
+            <tr>
+                <td>{{ review.title }}</td>
+                <td>{{ review.year }}</td>
+                <td align="center">
+                    <b>{{ review.rating | round(1) }}</b> / 5.0
+                </td>
+                <td>{{ review.timestamp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>You have not rated any movies yet.</p>
+    {% endif %}
+
+</body>
+</html>

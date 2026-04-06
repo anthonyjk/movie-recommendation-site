@@ -344,6 +344,26 @@ def view_user(user_id):
 							target_user_id=user_id, 
 							history=user_history)
 
+@app.route('/my_ratings')
+def my_ratings():
+	username = session.get('username')
+	if not username:
+		return redirect(url_for('index'))
+
+	db = get_db()
+	query = """
+		SELECT m.title, m.release_year as year, r.rating, r.timestamp
+		FROM user_ratings r
+		JOIN movie_db.movies m ON r.movieId = m.movieId
+		WHERE r.username = ?
+		ORDER BY r.timestamp DESC, m.title ASC
+	"""
+	history = pd.read_sql(query, db, params=(username,)).to_dict('records')
+
+	return render_template('my_ratings.html',
+							username=username,
+							history=history)
+
 @app.route('/rate', methods=['POST'])
 def rate_movie():
 	db = get_db()
