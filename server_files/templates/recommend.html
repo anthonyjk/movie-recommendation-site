@@ -41,6 +41,34 @@
 
     <br>
 
+    <h2>Users similar to you also liked...</h2>
+    {% if user_recommendations %}
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Movie Title</th>
+                <th>Release Year</th>
+                <th>Predicted Rating</th>
+                <th>Neighbor Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movie in user_recommendations %}
+            <tr>
+                <td>{{ movie.title }}</td>
+                <td>{{ movie.release_year }}</td>
+                <td>{{ movie.predicted_rating | round(2) }}</td>
+                <td>{{ movie.neighbor_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Rate a few more movies to unlock user-based recommendations.</p>
+    {% endif %}
+
+    <br>
+
     <h2>Users who are similar to you</h2>
     <ul>
       {% for user in similar_users %}

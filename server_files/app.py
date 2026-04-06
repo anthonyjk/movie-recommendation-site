@@ -50,6 +50,73 @@ def init_recommender():
 
 	conn.close()
 
+def get_similar_users(user_data, top_k=25):
+	if user_data.empty:
+		return []
+
+	user_vector = np.zeros((1, USER_ITEM_MATRIX.shape[1]))
+
+	for _, row in user_data.iterrows():
+		movie_id = int(row['movieId'])
+		if movie_id in MOVIE_ID_MAP:
+			user_vector[0, MOVIE_ID_MAP[movie_id]] = row['rating']
+
+	similarities = cosine_similarity(user_vector, USER_ITEM_MATRIX)[0]
+	top_indices = np.argsort(similarities)[::-1]
+
+	similar_users = []
+	for idx in top_indices:
+		similarity = float(similarities[idx])
+		if similarity <= 0:
+			continue
+
+		similar_users.append({
+			'id': int(ORIGINAL_USER_IDS[idx]),
+			'similarity': similarity
+		})
+
+		if len(similar_users) == top_k:
+			break
+
+	return similar_users
+
+def get_user_recommendations(db, username, similar_users, limit=5):
+	if not similar_users:
+		return []
+
+	neighbor_ids = [user['id'] for user in similar_users]
+	placeholders = ",".join("?" for _ in neighbor_ids)
+
+	query = f"""
+		SELECT r.userId, r.movieId, r.rating, m.title, m.release_year
+		FROM movie_db.data_ratings r
+		JOIN movie_db.movies m ON r.movieId = m.movieId
+		WHERE r.userId IN ({placeholders})
+		AND r.movieId NOT IN (SELECT movieId FROM user_ratings WHERE username = ?)
+		AND r.movieId NOT IN (SELECT movieId FROM swipe_skip WHERE username = ?)
+	"""
+	neighbor_ratings = pd.read_sql(query, db, params=(*neighbor_ids, username, username))
+
+	if neighbor_ratings.empty:
+		return []
+
+	weights = pd.DataFrame(similar_users)
+	neighbor_ratings = neighbor_ratings.merge(weights, left_on='userId', right_on='id')
+	neighbor_ratings['weighted_rating'] = neighbor_ratings['rating'] * neighbor_ratings['similarity']
+
+	recommendations = neighbor_ratings.groupby(['movieId', 'title', 'release_year'], as_index=False).agg(
+		predicted_rating=('weighted_rating', 'sum'),
+		similarity_total=('similarity', 'sum'),
+		neighbor_count=('userId', 'nunique'),
+	)
+	recommendations['predicted_rating'] = recommendations['predicted_rating'] / recommendations['similarity_total']
+	recommendations = recommendations.sort_values(
+		['predicted_rating', 'neighbor_count', 'title'],
+		ascending=[False, False, True],
+	)
+
+	return recommendations.head(limit)[['title', 'release_year', 'predicted_rating', 'neighbor_count']].to_dict('records')
+
 # Helper Functions
 def valid_username(username):
 	conn = sqlite3.connect("site.db")
@@ -228,7 +295,7 @@ def movie_page():
 
 @app.route('/recommend', methods=(['GET']))
 def recommend():
-	if USER_ITEM_MATRIX == None:
+	if USER_ITEM_MATRIX is None:
 		init_recommender()
 
 	db = get_db()
@@ -241,18 +308,21 @@ def recommend():
 	conn = sqlite3.connect('site.db')
 	query = """
 		SELECT movieId, rating FROM user_ratings 
-		WHERE username = ? AND rating >= 4
-		ORDER BY rating DESC
+		WHERE username = ?
+		ORDER BY rating DESC, timestamp DESC
 	"""
 	ratings = pd.read_sql(query, conn, params=(username,))
 	conn.close()
 
 	if ratings.empty:
-		return "If you see this, that means you need to rate more movies highly (4+)", None, None
+		return "Please rate at least one movie to see recommendations!"
+
+	liked_ratings = ratings[ratings['rating'] >= 4]
+	seed_ratings = liked_ratings if not liked_ratings.empty else ratings
 
 	m_conn = sqlite3.connect('movies.db')
-	movie_ids = tuple(ratings['movieId'].tolist())
-	top_movie_id = ratings.iloc[0]['movieId']
+	movie_ids = tuple(seed_ratings['movieId'].tolist())
+	top_movie_id = seed_ratings.iloc[0]['movieId']
 	top_movie_title = m_conn.execute("SELECT title FROM movies WHERE movieId = ?", (int(top_movie_id),)).fetchone()[0]
 
 	genre_query = f"SELECT genres FROM movies WHERE movieId IN {movie_ids if len(movie_ids) > 1 else '('+str(movie_ids[0])+')'}"
@@ -290,31 +360,8 @@ def recommend():
 	"""
 	item_recs = pd.read_sql(query, db, params=(int(top_movie_id), username, 5)).to_dict('records')
 
-	# USERS K-SIMILARITY
-	conn = sqlite3.connect('site.db')
-	user_data = pd.read_sql("SELECT movieId, rating FROM user_ratings WHERE username=?", 
-							conn, params=(username,))
-	conn.close()
-
-	if user_data.empty:
-		twins = []
-	else:
-		user_vector = np.zeros((1, USER_ITEM_MATRIX.shape[1]))
-
-		for _, row in user_data.iterrows():
-			m_id = int(row['movieId'])
-			if m_id in MOVIE_ID_MAP:
-				user_vector[0, MOVIE_ID_MAP[m_id]] = row['rating']
-
-		similarities = cosine_similarity(user_vector, USER_ITEM_MATRIX)[0]
-		top_indices = np.argsort(similarities)[-(5):][::-1]
-
-		twins = []
-		for idx in top_indices:
-			twins.append({
-				'id': int(ORIGINAL_USER_IDS[idx]),
-				'similarity': float(similarities[idx])
-			})
+	similar_users = get_similar_users(ratings)
+	user_recs = get_user_recommendations(db, username, similar_users)
 
 	return render_template('recommend.html', 
                            username=username,
@@ -322,7 +369,8 @@ def recommend():
                            seed_movie_title=top_movie_title,
                            genre_recommendations=genre_recs,
                            item_similar_recommendations=item_recs,
-                           similar_users=twins)
+                           user_recommendations=user_recs,
+                           similar_users=similar_users[:5])
 
 @app.route('/user/<int:user_id>')
 def view_user(user_id):
