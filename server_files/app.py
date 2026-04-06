@@ -180,7 +180,7 @@ def movie_page():
 
 	username = session.get('username')
 	if not username:
-		return redirect(url_for('/'))
+		return redirect(url_for('index'))
 
 	# Implementing user + movie bias model from notebook
 	conn_site = sqlite3.connect('site.db')
@@ -235,7 +235,7 @@ def recommend():
 
 	username = session.get('username')
 	if not username:
-		return redirect(url_for('/'))
+		return redirect(url_for('index'))
 
 	# GET USER INFO
 	conn = sqlite3.connect('site.db')
@@ -495,13 +495,13 @@ def login():
 	response = {f'status': status,
 				'jwt': jwt}
 
-	session['username'] = data['username']
-	session['logged_in'] = True
-
 	if status == 1:
+		session['username'] = data['username']
+		session['logged_in'] = True
 		flash(data['username'])
 		return redirect(url_for('movie_page'))
 	else:
+		session.clear()
 		flash("Login failed, username or password incorrect.")
 		return redirect(url_for('index'))
 
